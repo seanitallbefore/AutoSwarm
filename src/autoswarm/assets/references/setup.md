@@ -48,7 +48,13 @@ Use provider names `gemini` (aliases `gemini-cli`, `google-gemini`) and `antigra
 
 Google no longer accepts Gemini CLI's Google sign-in for individual accounts; for those, Gemini CLI needs its native API key or Vertex AI configuration. Google's Antigravity ACP server accepts a Google sign-in. Download the server for your platform from its ACP registry entry, verify the published sha256, and merge its absolute argv into `providers.antigravity.command`, for example `["/path/to/agy_acp_server.par"]`.
 
-The Antigravity server refuses new sessions until it has a credential, and AutoSwarm does not call ACP `authenticate`. Sign in once with `python3 scripts/antigravity_acp_signin.py /path/to/agy_acp_server.par`, which runs `initialize` and `authenticate` (method `oauth-personal` by default; pass another advertised method ID as the second argument) and lets the server open the browser. The server stores its own credential; AutoSwarm never reads it. Model selection uses the server's advertised ACP session controls.
+The Antigravity server refuses new sessions until it has a credential. Set `providers.antigravity.auth_method` to an advertised method ID, normally `"oauth-personal"`, and AutoSwarm signs in on the first call (see ACP sign-in below). The server opens the browser and stores its own credential; AutoSwarm never reads it. The standalone helper `python3 scripts/antigravity_acp_signin.py /path/to/agy_acp_server.par [method-id]` still works but is now optional: use it to sign in ahead of time, outside a delegated task. Model selection uses the server's advertised ACP session controls.
+
+### ACP sign-in
+
+Some ACP servers advertise `authMethods` and refuse `session/new`, `session/load` or `session/resume` with an authentication-required error (-32000) until signed in. AutoSwarm then calls ACP `authenticate` once with `providers.<provider>.auth_method` and retries the session call once; it never loops. There is no default method. Without one configured, or if the configured ID is not advertised, the call fails with `native_auth_required`, naming the advertised method IDs and the config key to set. A server that accepts `authenticate` but still refuses the session also fails with `native_auth_required`.
+
+Interactive sign-in can open a browser and take minutes, so `authenticate` has its own timeout: `providers.<provider>.auth_timeout`, in seconds, default 600. On timeout AutoSwarm stops the server and reports `native_auth_timeout`; a rejected sign-in reports `native_auth_failed` with the server's error. A timed-out or failed `authenticate` can make some servers, including Antigravity, clear their stored credential, so run only one sign-in at a time: let the first call that signs in finish before starting others for the same provider, or sign in beforehand with the server's own tooling.
 
 ## Recovery
 

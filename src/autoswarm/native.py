@@ -26,6 +26,11 @@ class Output:
     cancelled: bool = False
 
 
+def rpc_error(error):
+    code = "native_auth_required" if error.get("code") == -32000 and ("auth" in str(error.get("message", "")).lower() or (error.get("data") or {}).get("category") == "auth") else "native_rpc_error"
+    return SwarmError(code, json.dumps(error, ensure_ascii=False))
+
+
 class Native:
     def __init__(self, records, task, process, output, session_changed, progress=lambda phase, **details: None):
         self.task, self.process, self.output = task, process, output
@@ -124,8 +129,7 @@ class Native:
             if failure:
                 failure(error)
                 return
-            code = "native_auth_required" if error.get("code") == -32000 and ("auth" in error.get("message", "").lower() or (error.get("data") or {}).get("category") == "auth") else "native_rpc_error"
-            raise SwarmError(code, json.dumps(error, ensure_ascii=False))
+            raise rpc_error(error)
         callback(event.get("result", {}))
 
     def initial_prompt(self):

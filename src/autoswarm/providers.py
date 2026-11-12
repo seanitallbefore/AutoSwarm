@@ -26,6 +26,8 @@ BINARIES = {
 # Antigravity is Google's ACP server from the ACP registry (antigravity-acp); it takes no ACP flag.
 ACP_PROVIDERS = {"cursor", "copilot", "codebuddy", "hermes", "nanobot", "dsh", "grok", "gemini", "antigravity"}
 OWNED_SERVERS = ACP_PROVIDERS | {"opencode", "muse"}
+# Interactive ACP sign-in may open a browser and wait for the user.
+AUTH_TIMEOUT = 600
 
 
 def canonical(name: str) -> str:
@@ -90,6 +92,16 @@ def invocation(task: dict, config: dict) -> list[str]:
                 raise SwarmError("conflicting_selection", "--effort and native --variant request different OpenCode variants")
             options["variant"] = task["effort"]
     task["native_options"] = options
+    if name in ACP_PROVIDERS:
+        # ACP `authenticate` runs only with an explicitly configured method.
+        settings = config.get("providers", {}).get(name, {})
+        method, timeout = settings.get("auth_method"), settings.get("auth_timeout", AUTH_TIMEOUT)
+        if method is not None and (not isinstance(method, str) or not method.strip()):
+            raise SwarmError("invalid_config", f"providers.{name}.auth_method must be a non-empty ACP auth method ID")
+        if isinstance(timeout, bool) or not isinstance(timeout, (int, float)) or timeout <= 0:
+            raise SwarmError("invalid_config", f"providers.{name}.auth_timeout must be a positive number of seconds")
+        if method:
+            task["native_auth"] = {"method": method, "timeout": timeout}
     if name == "codex":
         command += ["app-server"]
     elif name == "claude-code":

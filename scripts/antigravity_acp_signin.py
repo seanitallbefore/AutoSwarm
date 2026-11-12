@@ -1,9 +1,11 @@
 """One-time Google sign-in for Google Antigravity's ACP server.
 
-AutoSwarm's ACP client does not call `authenticate`, and the Antigravity server refuses
-`session/new` until it holds a credential. This runs `initialize` and `authenticate`
+Optional: with `providers.antigravity.auth_method` set, AutoSwarm calls ACP
+`authenticate` itself when the server refuses `session/new` for want of a credential.
+Use this to sign in ahead of time instead. It runs `initialize` and `authenticate`
 over stdio once; the server opens the browser for the sign-in and stores its own
-credential. Prints only the advertised method names and the outcome.
+credential. Prints only the advertised method names and the outcome. Run one sign-in
+at a time: a failed or abandoned `authenticate` can make the server clear its credential.
 
 Usage: python3 scripts/antigravity_acp_signin.py /path/to/agy_acp_server.par [method-id]
 """
